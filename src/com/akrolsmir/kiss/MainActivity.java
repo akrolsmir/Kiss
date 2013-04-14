@@ -1,6 +1,7 @@
 package com.akrolsmir.kiss;
 
 import java.io.File;
+import java.util.Arrays;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.ObjectId;
@@ -9,7 +10,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepository;
 
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
@@ -29,12 +29,6 @@ public class MainActivity extends SherlockActivity {
 	private Repository localRepo;
 	private Git git;
 	private boolean updateExists;
-
-	public void testClone() throws Exception {
-		Git.cloneRepository().setURI(remotePath)
-				.setDirectory(new File(localPath)).call();
-		Log.d("TAGGG", "DONE");
-	}
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -58,7 +52,6 @@ public class MainActivity extends SherlockActivity {
 			@Override
 			public void onClick(View v) {
 				new CloneRepoTask().execute(remotePath, localPath);
-
 			}
 		});
 
@@ -67,16 +60,12 @@ public class MainActivity extends SherlockActivity {
 
 			@Override
 			public void onClick(View v) {
-				try {
 					new CheckUpdateTask(MainActivity.this).execute(MainActivity.this);
 
 //					git.branchCreate().setName("master")
 //							.setUpstreamMode(SetupUpstreamMode.SET_UPSTREAM)
 //							.setStartPoint("origin/master").setForce(true)
 //							.call();
-				} catch (Exception e) {
-					Log.d("TAGGG", "TAGGG", e);
-				}
 			}
 		});
 
@@ -93,9 +82,10 @@ public class MainActivity extends SherlockActivity {
 		Log.d("TAGGG", "ACTIVITY1" + this);
 	}
 
-	private class CheckUpdateTask extends AsyncTask<SherlockActivity, Integer, Boolean> {
+	public class CheckUpdateTask extends AsyncTask<SherlockActivity, Integer, Boolean> {
 		
 		SherlockActivity activity;
+		Exception e;
 		
 		public CheckUpdateTask(SherlockActivity activity) {
 			activity = this.activity;
@@ -115,16 +105,23 @@ public class MainActivity extends SherlockActivity {
 					return !from.equals(ref.getObjectId());
 				}
 			} catch (Exception e) {
+				this.e = e;
+				publishProgress();
 				Log.d("TAGGG", "TAGGG", e);
 			}
 			return null;
 		}
 		
 		@Override
+		protected void onProgressUpdate(Integer... values) {
+			Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+			super.onProgressUpdate(values);
+		}
+		
+		@Override
 		protected void onPostExecute(Boolean result) {
 			Log.d("TAGGG", "Update found? " + result);
 			updateExists = result;
-			Log.d("TAGGG", "" + (activity == null));
 			if(activity != null){
 				activity.supportInvalidateOptionsMenu();
 			}
@@ -134,6 +131,8 @@ public class MainActivity extends SherlockActivity {
 	}
 
 	private class CloneRepoTask extends AsyncTask<String, Integer, Void> {
+		
+		Exception e;
 
 		@Override
 		protected Void doInBackground(String... params) {
@@ -141,9 +140,17 @@ public class MainActivity extends SherlockActivity {
 				Git.cloneRepository().setURI(params[0])
 						.setDirectory(new File(params[1])).call();
 			} catch (Exception e) {
+				this.e = e;
+				publishProgress();
 				Log.d("TAGGG", "TAGGG", e);
 			}
 			return null;
+		}
+		
+		@Override
+		protected void onProgressUpdate(Integer... values) {
+			Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+			super.onProgressUpdate(values);
 		}
 
 		@Override
@@ -160,6 +167,7 @@ public class MainActivity extends SherlockActivity {
 			try {
 				git.pull().call();
 			} catch (Exception e) {
+				Toast.makeText(getApplicationContext(), Arrays.toString(e.getStackTrace()), Toast.LENGTH_LONG).show();
 				Log.d("TAGGG", "TAGGG", e);
 			}
 			return null;
